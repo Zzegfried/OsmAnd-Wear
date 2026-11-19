@@ -1,5 +1,10 @@
 OsmAnd (OSM Automated Navigation Directions)
 ------------
+### Private downstream of [osmandapp/OsmAnd](https://github.com/osmandapp/OsmAnd), with modifications supporting the OsmWear companion watch app.
+
+Local checkout: `D:\GitHub\melmullen\OsmAnd\OsmAnd-Wear`, beside `../OsmWear`. Use the [paired build and deploy runbook](../OsmWear/docs/Build_and_Deploy.md) for the JDK 21 phone build, matching watch signing and APK paths. Phone Gradle tasks read `../resources` (relative to this checkout); the local junction points to `../OsmWear/.local/osmand-workspace/osmand-preview/resources`. Keep that junction valid after moving the repositories.
+
+------------
 This project aims at providing comfortable map viewing and navigation (routing) application for mobile devices. Particular stress lies with complete offline features (via pre-loaded offline map data) or economic internet usage.
 To get started, continue with the basic description below, then find more detail on our Welcome Wiki Pages, the Project Homepage, or the OpenStreetMap OsmAnd Wiki Page.
 You are welcome to discuss any question regarding the project at the Google group OsmAnd. Please do not use comments on wiki pages because it is rather difficult to find them.

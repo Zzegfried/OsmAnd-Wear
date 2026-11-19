@@ -20,6 +20,7 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Shader.TileMode;
 import android.graphics.drawable.Drawable;
+import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.DisplayMetrics;
@@ -106,6 +107,14 @@ public class OsmandRenderer {
 
 	/* package */
 	public static class RenderingContext extends net.osmand.RenderingContext {
+		/** Set for an offscreen render (see {@link OffscreenRenderOptions}); stops the drawing loop. */
+		CancellationSignal cancellation;
+		/** Draw road shields at the style's asset size rather than the phone's widget size. */
+		boolean styleSizedShields;
+
+		private boolean isInterrupted() {
+			return interrupted || (cancellation != null && cancellation.isCanceled());
+		}
 		List<TextDrawInfo> textToDraw = new ArrayList<TextDrawInfo>();
 		List<IconDrawInfo> iconsToDraw = new ArrayList<IconDrawInfo>();
 		Paint[] oneWay ;
@@ -249,7 +258,7 @@ public class OsmandRenderer {
 				} else if (array.get(i).objectType == 1) {
 					drawPoint(mObj, req, cv, rc, pair, array.get(i).typeInd == 0);
 				}
-				if (i % 25 == 0 && rc.interrupted) {
+				if (i % 25 == 0 && rc.isInterrupted()) {
 					return;
 				}
 			}
@@ -374,7 +383,7 @@ public class OsmandRenderer {
 					}
 				}
 			}
-			if (rc.interrupted) {
+			if (rc.isInterrupted()) {
 				return;
 			}
 		}
@@ -505,7 +514,7 @@ public class OsmandRenderer {
 					}
 				}
 
-				if (rc.interrupted) {
+				if (rc.isInterrupted()) {
 					return;
 				}
 			}

@@ -107,6 +107,9 @@ public class PluginsHelper {
 		Set<String> enabledPlugins = app.getSettings().getEnabledPlugins();
 		allPlugins.clear();
 
+		if (net.osmand.plus.plugins.wear.WearOsPlugin.supported(app)) {
+			allPlugins.add(new net.osmand.plus.plugins.wear.WearOsPlugin(app));
+		}
 		allPlugins.add(new WikipediaPlugin(app));
 		allPlugins.add(new OsmandRasterMapsPlugin(app));
 		allPlugins.add(new OsmandMonitoringPlugin(app));

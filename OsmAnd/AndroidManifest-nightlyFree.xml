@@ -5,6 +5,9 @@
     <application
         android:icon="@mipmap/icon_nightly"
         tools:replace="android:icon">
+        <service android:name="net.osmand.plus.plugins.wear.WearLocationService" android:exported="false" android:stopWithTask="true" android:foregroundServiceType="location" />
+        <service android:name="net.osmand.plus.plugins.wear.WearBluetoothService" android:exported="false" android:foregroundServiceType="connectedDevice" android:stopWithTask="true" />
+
         <activity
             android:name="net.osmand.plus.activities.MapActivity"
             android:theme="@style/FirstSplashScreenNightlyFree"

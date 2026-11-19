@@ -22,6 +22,14 @@ apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 //        </unzip>
 // Less important
 
+// The Wear OS companion version, shared with the watch app through src-wearprotocol. It is
+// separate from OsmAnd's own version below, which stays as upstream sets it.
+def wearCompanionVersion = new Properties()
+file("src-wearprotocol/wear-companion-version.properties").withInputStream { wearCompanionVersion.load(it) }
+if (!wearCompanionVersion.getProperty("name")?.trim() || !wearCompanionVersion.getProperty("build")?.trim()?.isInteger()) {
+	throw new GradleException("wear-companion-version.properties needs a name and an integer build")
+}
+
 android {
 	signingConfigs {
 		development {
@@ -56,6 +64,8 @@ android {
 		versionName "5.4.0"
 		versionName System.getenv("APK_VERSION")? System.getenv("APK_VERSION").toString(): versionName
 		versionName System.getenv("APK_VERSION_SUFFIX")? versionName + System.getenv("APK_VERSION_SUFFIX").toString(): versionName
+		resValue "string", "wear_companion_version_name", wearCompanionVersion.getProperty("name").trim()
+		resValue "string", "wear_companion_build", wearCompanionVersion.getProperty("build").trim()
 	}
 
 	lintOptions {
@@ -81,26 +91,32 @@ android {
 	//}
 
 	sourceSets {
+		// The phone/watch wire contract. This folder is the master copy; the watch app receives it
+		// through `git subtree`, so edit it only here (see OsmWear/docs/Technical_Design.md).
+		main {
+			java.srcDir "src-wearprotocol"
+		}
 		debug {
 			manifest.srcFile "AndroidManifest-debug.xml"
 		}
 		gplayFull {
-			java.srcDirs = ["src-google", "src-gplay"]
+			manifest.srcFile "AndroidManifest-gplayFull.xml"
+			java.srcDirs = ["src-google", "src-gplay", "src-bluetooth"]
 		}
 		gplayFree {
-			java.srcDirs = ["src-google", "src-gplay"]
+			java.srcDirs = ["src-google", "src-gplay", "src-bluetooth"]
 			manifest.srcFile "AndroidManifest-gplayFree.xml"
 		}
 		androidFull {
-			java.srcDirs = ["src-google", "src-osmand", "src-nogplay"]
+			java.srcDirs = ["src-google", "src-osmand", "src-nogplay", "src-bluetooth"]
 			manifest.srcFile "AndroidManifest-androidFull.xml"
 		}
 		nightlyFree {
-			java.srcDirs = ["src-google", "src-osmand", "src-nogplay"]
+			java.srcDirs = ["src-google", "src-osmand", "src-nogplay", "src-bluetooth"]
 			manifest.srcFile "AndroidManifest-nightlyFree.xml"
 		}
 		huawei {
-			java.srcDirs = ["src-huawei", "src-nogplay"]
+			java.srcDirs = ["src-huawei", "src-nogplay", "src-bluetooth"]
 			manifest.srcFile "AndroidManifest-huawei.xml"
 		}
 

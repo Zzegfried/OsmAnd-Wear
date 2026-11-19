@@ -50,15 +50,25 @@ public class AndroidApiLocationServiceHelper extends LocationServiceHelper imple
 
 	@Override
 	public void requestLocationUpdates(@NonNull LocationCallback locationCallback) {
+		requestLocationUpdates(locationCallback, 0);
+	}
+
+	@Override
+	public void requestLocationUpdates(@NonNull LocationCallback locationCallback, long minIntervalMs) {
 		this.locationCallback = locationCallback;
 		// request location updates
-		requestLocationUpdatesImpl(this, getPrimaryProvider());
+		requestLocationUpdatesImpl(this, getPrimaryProvider(), minIntervalMs);
 	}
 
 	protected boolean requestLocationUpdatesImpl(@NonNull LocationListener listener, @NonNull String provider) {
+		return requestLocationUpdatesImpl(listener, provider, 0);
+	}
+
+	private boolean requestLocationUpdatesImpl(@NonNull LocationListener listener, @NonNull String provider,
+	                                           long minIntervalMs) {
 		LocationManager locationManager = (LocationManager) app.getSystemService(LOCATION_SERVICE);
 		try {
-			locationManager.requestLocationUpdates(provider, 0, 0, listener);
+			locationManager.requestLocationUpdates(provider, minIntervalMs, 0, listener);
 			return true;
 		} catch (SecurityException e) {
 			LOG.debug(provider + " location service permission not granted", e);

@@ -76,11 +76,19 @@ public class GmsLocationServiceHelper extends LocationServiceHelper {
 
 	@Override
 	public void requestLocationUpdates(@NonNull LocationCallback locationCallback) {
+		requestLocationUpdates(locationCallback, 0);
+	}
+
+	@Override
+	public void requestLocationUpdates(@NonNull LocationCallback locationCallback, long minIntervalMs) {
 		this.locationCallback = locationCallback;
+		LocationRequest request = minIntervalMs <= 0 ? fusedLocationRequest
+				: new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, minIntervalMs)
+				.setMinUpdateIntervalMillis(minIntervalMs).build();
 		// request location updates
 		try {
 			fusedLocationProviderClient.requestLocationUpdates(
-					fusedLocationRequest, fusedLocationCallback, Looper.myLooper());
+					request, fusedLocationCallback, Looper.myLooper());
 		} catch (SecurityException e) {
 			LOG.debug("Location service permission not granted", e);
 			throw e;

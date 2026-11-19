@@ -68,6 +68,14 @@ public abstract class LocationServiceHelper {
 
 	public abstract void requestLocationUpdates(@NonNull LocationCallback locationCallback);
 
+	/**
+	 * Requests updates no more often than every {@code minIntervalMs}, for consumers that need a
+	 * slower rate to save power. A helper without its own support uses its normal rate.
+	 */
+	public void requestLocationUpdates(@NonNull LocationCallback locationCallback, long minIntervalMs) {
+		requestLocationUpdates(locationCallback);
+	}
+
 	public abstract boolean isNetworkLocationUpdatesSupported();
 
 	public abstract void requestNetworkLocationUpdates(@NonNull LocationCallback locationCallback);

@@ -6,6 +6,9 @@
         android:icon="@mipmap/icon_free"
 		android:label="@string/app_name"
         tools:replace="android:icon, android:label">
+        <service android:name="net.osmand.plus.plugins.wear.WearLocationService" android:exported="false" android:stopWithTask="true" android:foregroundServiceType="location" />
+        <service android:name="net.osmand.plus.plugins.wear.WearBluetoothService" android:exported="false" android:foregroundServiceType="connectedDevice" android:stopWithTask="true" />
+
 
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
@@ -20,4 +23,4 @@
             tools:replace="android:authorities"
             android:authorities="net.osmand.fileprovider"/>
     </application>
-</manifest> 
+</manifest>

@@ -1,5 +1,55 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <resources>
+    <string name="wear_watch_diagnostics_category">Diagnostics</string>
+    <string name="wear_watch_diagnostic_logging">Diagnostic logging</string>
+    <string name="wear_watch_diagnostic_logging_summary">Records watch connection and location-session events on this phone and on the watch, to help find connection problems. No positions or map content are recorded. The watch follows this setting the next time it opens or refreshes its map session.</string>
+    <string name="wear_companion_version">Companion %1$s (build %2$s)</string>
+    <string name="wear_watch_bluetooth_permission_retry">Bluetooth permission required for the watch link. Tap here to allow it.</string>
+    <string name="fdroid_purchases_unavailable">In-app purchases are not available in this build.</string>
+    <string name="wear_watch_forget">Forget watch</string>
+    <string name="wear_watch_forget_summary">Remove the saved watch identity and require a new pairing code. OsmAnd data and the system Bluetooth bond are kept.</string>
+    <string name="wear_watch_forget_message">Remove the saved watch pairing? The watch must be paired again with a new code. OsmAnd data and the system Bluetooth bond are not removed.</string>
+    <string name="wear_watch_forget_done">Watch pairing forgotten. Open the watch app to pair again.</string>
+    <string name="wear_os_location_title">Watch map position</string>
+    <string name="wear_os_location_text">Phone position is shared with the watch map.</string>
+    <string name="wear_os_location_stop">Stop sharing position</string>
+    <string name="wear_os_location_waiting">Waiting for the watch map to open.</string>
+    <string name="wear_os_companion_name">Wear OS companion</string>
+    <string name="wear_os_companion_description">Show offline maps, the calculated route, selected GPX tracks and phone position on your paired Wear OS watch. Install the matching watch app. Watch browsing leaves the phone map unchanged.</string>
+    <string name="wear_watch_off_route">Off-route watch alerts</string>
+    <string name="wear_watch_alerts_category">Route alerts</string>
+    <string name="wear_watch_map_category">Watch map</string>
+    <string name="wear_watch_activity_category">Watch controls</string>
+    <string name="wear_watch_route_recalculated">Route-recalculation watch alerts</string>
+    <string name="wear_watch_alerts_summary">An alert is sent only when OsmAnd speaks the enabled prompt. Watch notification settings control vibration.</string>
+    <string name="wear_watch_label_scale">Watch map label size</string>
+    <string name="wear_watch_label_follow_phone">Follow phone</string>
+    <string name="wear_watch_label_125">125% of phone size</string>
+    <string name="wear_watch_label_150">150% of phone size</string>
+    <string name="wear_watch_initial_zoom">Initial watch zoom</string>
+    <string name="wear_watch_zoom_current">Current zoom</string>
+    <string name="wear_watch_zoom_out_one">One level farther out</string>
+    <string name="wear_watch_zoom_out_two">Two levels farther out</string>
+    <string name="wear_watch_ruler">Show map ruler</string>
+    <string name="wear_watch_ruler_summary">Show a distance scale at the bottom of the watch map.</string>
+    <string name="wear_watch_clock">Show map clock</string>
+    <string name="wear_watch_clock_summary">Show the current time at the 9 o\'clock position on the watch map.</string>
+    <string name="wear_watch_recording_controls">Allow recording controls on watch</string>
+    <string name="wear_watch_recording_summary">Recording distance remains visible when controls are off.</string>
+    <string name="wear_watch_status">Watch connection and permissions</string>
+    <string name="wear_watch_status_enabled">Map sharing enabled</string>
+    <string name="wear_watch_status_disabled">Map sharing disabled</string>
+    <string name="wear_watch_status_session_active">Map position session active</string>
+    <string name="wear_watch_status_session_inactive">Map position session inactive</string>
+    <string name="wear_watch_status_notifications">Check watch notification permission</string>
+    <string name="wear_watch_bluetooth_off">Bluetooth link off</string>
+    <string name="wear_watch_bluetooth_permission">Bluetooth permission required</string>
+    <string name="wear_watch_bluetooth_unavailable">Bluetooth unavailable</string>
+    <string name="wear_watch_bluetooth_listening">Bluetooth link listening</string>
+    <string name="wear_watch_bluetooth_connected">Watch connected</string>
+    <string name="wear_watch_bluetooth_pairing">Pairing code %1$s</string>
+    <string name="wear_watch_pair_title">Pair watch</string>
+    <string name="wear_watch_pair_message">Compare this code on the watch and confirm:\n\n%1$s</string>
 <!--
 	README:
 	- The preferred way to help with translations is via https://hosted.weblate.org/engage/osmand/

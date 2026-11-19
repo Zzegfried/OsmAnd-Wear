@@ -8,6 +8,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import net.osmand.NativeLibrary.NativeSearchResult;
 import net.osmand.PlatformUtil;
 import net.osmand.ResultMatcher;
@@ -77,6 +78,22 @@ public class MapRenderRepositories {
 	private final Set<String> hiddenFileNames = new HashSet<>();
 	private final Set<String> hiddenFileExtensions = new HashSet<>();
 	private final OsmandRenderer renderer;
+	/** Null for the application-owned main map renderer. */
+	@Nullable
+	private final OffscreenRenderOptions offscreen;
+	private final OsmAndAppCustomizationListener customizationListener;
+
+	/**
+	 * Captures the main map's current style for an offscreen render. Call on the UI thread.
+	 * The text multiplier scales only the offscreen labels; the map's text setting is unchanged.
+	 */
+	@NonNull
+	public OffscreenRenderOptions.Style captureOffscreenStyle(int zoom, float textMultiplier) {
+		boolean night = app.getDaynightHelper().isNightMode(settings.getApplicationMode(), ThemeUsageContext.MAP, true);
+		RenderingRulesStorage storage = app.getRendererRegistry().getCurrentSelectedRenderer();
+		return new OffscreenRenderOptions.Style(getSearchRequestWithAppliedCustomRules(storage, night), storage, night,
+				getMapPreferredLocale(app, zoom), app.getOsmandMap().getTextScale() * textMultiplier);
+	}
 
 	// lat/lon box of requested vector data
 	private QuadRect cObjectsBox = new QuadRect();
@@ -110,16 +127,52 @@ public class MapRenderRepositories {
 	private OsmandSettings settings;
 
 	public MapRenderRepositories(OsmandApplication app) {
+		this(app, null);
+	}
+
+	/**
+	 * Non-null options create an isolated, cancellable offscreen renderer (see {@link OffscreenRenderOptions});
+	 * the caller owns it and must {@link #close()} it.
+	 */
+	public MapRenderRepositories(OsmandApplication app, @Nullable OffscreenRenderOptions offscreen) {
 		this.app = app;
 		this.renderer = new OsmandRenderer(app);
+		this.offscreen = offscreen;
 		handler = new Handler(Looper.getMainLooper());
 		settings = app.getSettings();
 
-		OsmAndAppCustomizationListener customizationListener = () -> {
+		customizationListener = () -> {
 			settings = MapRenderRepositories.this.app.getSettings();
 			clearCache();
 		};
-		app.getAppCustomization().addListener(customizationListener);
+		if (offscreen == null) app.getAppCustomization().addListener(customizationListener);
+	}
+
+	/**
+	 * Hands the rendered bitmap of an offscreen renderer to the caller, who then owns and recycles it;
+	 * {@link #close()} no longer touches it. Avoids copying a just-rendered image.
+	 */
+	public synchronized Bitmap takeBitmap() {
+		if (offscreen == null) throw new IllegalStateException("Only an offscreen renderer hands over its bitmap");
+		Bitmap taken = bmp;
+		bmp = null;
+		if (prevBmp == taken) prevBmp = null;
+		return taken;
+	}
+
+	/** Release a privately owned instance; the main map renderer remains application-owned. */
+	public synchronized void close() {
+		if (offscreen == null) app.getAppCustomization().removeListener(customizationListener);
+		Bitmap current = bmp;
+		Bitmap previous = prevBmp;
+		clearAllResources();
+		if (current != null && !current.isRecycled()) {
+			current.recycle();
+		}
+		if (previous != null && previous != current && !previous.isRecycled()) {
+			previous.recycle();
+		}
+		prevBmp = null;
 	}
 
 	public OsmandApplication getApp() {
@@ -158,18 +211,29 @@ public class MapRenderRepositories {
 		hiddenFileExtensions.remove(extension);
 	}
 
+	/**
+	 * Whether this renderer leaves the file out, such as a travel guide turned off. Unsynchronized,
+	 * like the add/remove methods; the watch preview reads it on the main thread to apply the rule.
+	 */
+	public boolean isFileHidden(@NonNull String fileName) {
+		if (hiddenFileNames.contains(fileName)) {
+			return true;
+		}
+		for (String extension : hiddenFileExtensions) {
+			if (fileName.endsWith(extension)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public void initializeNewResource(File file, BinaryMapIndexReader reader) {
 		String fileName = file.getName();
 		if (files.containsKey(fileName)) {
 			closeConnection(fileName);
 		}
-		if (hiddenFileNames.contains(fileName)) {
+		if (isFileHidden(fileName)) {
 			return;
-		}
-		for (String extension : hiddenFileExtensions) {
-			if (fileName.endsWith(extension)) {
-				return;
-			}
 		}
 		LinkedHashMap<String, BinaryMapIndexReader> cpfiles = new LinkedHashMap<>(files);
 		cpfiles.put(fileName, reader);
@@ -268,11 +332,33 @@ public class MapRenderRepositories {
 	}
 	
 	public boolean wasInterrupted() {
-		return interrupted;
+		return interrupted || isOffscreenCancelled();
+	}
+
+	private boolean isOffscreenCancelled() {
+		return offscreen != null && offscreen.cancellation.isCanceled();
+	}
+
+	/** The map-search matcher of an offscreen render: the caller's limits plus cancellation. */
+	@Nullable
+	private ResultMatcher<BinaryMapDataObject> offscreenSearchMatcher() {
+		if (offscreen == null) return null;
+		ResultMatcher<BinaryMapDataObject> limits = offscreen.searchMatcher;
+		return new ResultMatcher<BinaryMapDataObject>() {
+			@Override
+			public boolean publish(BinaryMapDataObject object) {
+				return limits == null || limits.publish(object);
+			}
+
+			@Override
+			public boolean isCancelled() {
+				return isOffscreenCancelled() || (limits != null && limits.isCancelled());
+			}
+		};
 	}
 
 	private boolean checkWhetherInterrupted() {
-		if (interrupted || (currentRenderingContext != null && currentRenderingContext.interrupted)) {
+		if (wasInterrupted() || (currentRenderingContext != null && currentRenderingContext.interrupted)) {
 			requestedBox = bmpLocation;
 			return true;
 		}
@@ -406,7 +492,7 @@ public class MapRenderRepositories {
 
 					@Override
 					public boolean isCancelled() {
-						return !interrupted;
+						return offscreen != null ? isOffscreenCancelled() : !interrupted;
 					}
 				});
 			}
@@ -449,7 +535,7 @@ public class MapRenderRepositories {
 		}
 		boolean objectsFromMapSectionRead = tempResult.size() > 0;
 		if (renderRouteDataFile >= 0 && zoom >= zoomOnlyForBasemaps ) {
-			searchRequest = BinaryMapIndexReader.buildSearchRequest(leftX, rightX, topY, bottomY, zoom, null);
+			searchRequest = BinaryMapIndexReader.buildSearchRequest(leftX, rightX, topY, bottomY, zoom, null, offscreenSearchMatcher());
 			for (BinaryMapIndexReader c : files.values()) {
 				// false positive case when we have 2 sep maps Country-roads & Country
 				if(c.getMapIndexes().size() == 0 || renderRouteDataFile == 1) {
@@ -551,7 +637,7 @@ public class MapRenderRepositories {
 			searchFilter = null;
 		}
 		MapIndex mi = null;
-		searchRequest = BinaryMapIndexReader.buildSearchRequest(leftX, rightX, topY, bottomY, zoom, searchFilter);
+		searchRequest = BinaryMapIndexReader.buildSearchRequest(leftX, rightX, topY, bottomY, zoom, searchFilter, offscreenSearchMatcher());
 		boolean containsJapanMapData = false;
 		for (BinaryMapIndexReader c : files.values()) {
 			boolean basemap = c.isBasemap();
@@ -640,6 +726,8 @@ public class MapRenderRepositories {
 	}
 
 	public synchronized void loadMap(RotatedTileBox tileRect, MapTileDownloader mapTileDownloader) {
+		if (offscreen != null) offscreen.cancellation.throwIfCanceled();
+		OffscreenRenderOptions.Style offscreenStyle = offscreen != null ? offscreen.style : null;
 		boolean prevInterrupted = interrupted;
 		interrupted = false;
 		// added to avoid zoomAnimation != 0 which produces wrong map position on the screen
@@ -652,15 +740,18 @@ public class MapRenderRepositories {
 		}
 		try {
 			// find selected rendering type
-			boolean nightMode= app.getDaynightHelper().isNightMode(app.getSettings().getApplicationMode(), ThemeUsageContext.MAP, true);
+			boolean nightMode = offscreenStyle != null ? offscreenStyle.night
+					: app.getDaynightHelper().isNightMode(app.getSettings().getApplicationMode(), ThemeUsageContext.MAP, true);
 
 			// boolean moreDetail = prefs.SHOW_MORE_MAP_DETAIL.get();
-			RenderingRulesStorage storage = app.getRendererRegistry().getCurrentSelectedRenderer();
-			settings.setAppModeCustomProperties();
-			RenderingRuleSearchRequest renderingReq = getSearchRequestWithAppliedCustomRules(storage, nightMode);
+			RenderingRulesStorage storage = offscreenStyle != null ? offscreenStyle.storage : app.getRendererRegistry().getCurrentSelectedRenderer();
+			if (offscreenStyle == null) settings.setAppModeCustomProperties();
+			RenderingRuleSearchRequest renderingReq = offscreenStyle != null ? offscreenStyle.request : getSearchRequestWithAppliedCustomRules(storage, nightMode);
 
 			renderingReq.saveState();
-			NativeOsmandLibrary nativeLib = !settings.SAFE_MODE.get() ? NativeOsmandLibrary.getLibrary(storage, app) : null;
+			// The native library is global state shared with the main map; offscreen renders use the Java renderer.
+			NativeOsmandLibrary nativeLib = offscreen == null && !settings.SAFE_MODE.get()
+					? NativeOsmandLibrary.getLibrary(storage, app) : null;
 
 
 			// calculate data box
@@ -696,6 +787,10 @@ public class MapRenderRepositories {
 				}
 			}
 			currentRenderingContext = new OsmandRenderer.RenderingContext(app);
+			if (offscreen != null) {
+				currentRenderingContext.cancellation = offscreen.cancellation;
+				currentRenderingContext.styleSizedShields = offscreen.styleSizedShields;
+			}
 			currentRenderingContext.searchTime = System.currentTimeMillis() - now;
 			renderingReq.clearState();
 			renderingReq.setIntFilter(renderingReq.ALL.R_MINZOOM, requestedBox.getZoom());
@@ -725,16 +820,19 @@ public class MapRenderRepositories {
 			currentRenderingContext.width = requestedBox.getPixWidth();
 			currentRenderingContext.height = requestedBox.getPixHeight();
 			currentRenderingContext.nightMode = nightMode;
-			currentRenderingContext.preferredLocale = getMapPreferredLocale(app, requestedBox.getZoom());
+			currentRenderingContext.preferredLocale = offscreenStyle != null ? offscreenStyle.locale
+					: getMapPreferredLocale(app, requestedBox.getZoom());
 			float mapDensity = (float) requestedBox.getMapDensity();
 			currentRenderingContext.setDensityValue(mapDensity);
 			// Text/icon scales according to mapDensity (so text is size of road)
 //			currentRenderingContext.textScale = (requestedBox.getDensity()*app.getSettings().TEXT_SCALE.get()); 
 			// Text/icon stays same for all sizes
-			currentRenderingContext.textScale = (requestedBox.getDensity() * app.getOsmandMap().getTextScale())
+			currentRenderingContext.textScale = (requestedBox.getDensity() * (offscreenStyle != null ? offscreenStyle.textScale : app.getOsmandMap().getTextScale()))
 					/ mapDensity;
-			
-			currentRenderingContext.screenDensityRatio = 1 / Math.max(1, requestedBox.getDensity()) ;
+
+			// Offscreen pixels are independent of the phone's drawable-resource density.
+			currentRenderingContext.screenDensityRatio = offscreen != null
+					? 1 / app.getResources().getDisplayMetrics().density : 1 / Math.max(1, requestedBox.getDensity());
 			// init rendering context
 			currentRenderingContext.tileDivisor = tileDivisor;
 			if (checkWhetherInterrupted()) {
@@ -799,13 +897,15 @@ public class MapRenderRepositories {
 			// keep cache // this.prevBmp = null;
 			this.prevBmpLocation = null;
 			log.info("> " + msg);
-			if (settings.DEBUG_RENDERING_INFO.get() && PluginsHelper.isActive(OsmandDevelopmentPlugin.class)) {
+			if (offscreen == null && settings.DEBUG_RENDERING_INFO.get() && PluginsHelper.isActive(OsmandDevelopmentPlugin.class)) {
 				app.showToastMessage(msg);
 			}
 		} catch (RuntimeException e) {
+			if (offscreen != null) throw e;
 			log.error("Runtime memory exception", e); //$NON-NLS-1$
 			app.showShortToastMessage(R.string.rendering_exception);
 		} catch (OutOfMemoryError e) {
+			if (offscreen != null) throw e;
 			log.error("Out of memory error", e); //$NON-NLS-1$
 			cObjects = new ArrayList<BinaryMapDataObject>();
 			cObjectsBox = new QuadRect();

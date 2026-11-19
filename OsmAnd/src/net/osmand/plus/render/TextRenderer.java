@@ -254,14 +254,15 @@ public class TextRenderer {
 				int iconWidth = ico.getIntrinsicWidth();
 				float xyRatio = (float) iconWidth / iconHeight;
 
-				int viewHeightPx = AndroidUtils.dpToPx(rc.ctx, SHIELD_HEIGHT_DP);
+				// Offscreen renders may use the style asset size; phone widgets keep their 40 dp layout.
+				int viewHeightPx = rc.styleSizedShields ? iconHeight : AndroidUtils.dpToPx(rc.ctx, SHIELD_HEIGHT_DP);
 				int viewWidthPx = (int) (viewHeightPx * xyRatio);
 
 				float left = text.centerX - viewWidthPx / 2f * coef - 0.5f;
 				float top = text.centerY - viewHeightPx / 2f * coef - paintText.descent() * 1.5f;
 				cv.save();
 				cv.translate(left, top);
-				if (rc.screenDensityRatio != 1f) {
+				if (rc.styleSizedShields || rc.screenDensityRatio != 1f) {
 					ico.setBounds(0, 0, (int) (viewWidthPx * coef), (int) (viewHeightPx * coef));
 				} else {
 					ico.setBounds(0, 0, viewWidthPx, viewHeightPx);

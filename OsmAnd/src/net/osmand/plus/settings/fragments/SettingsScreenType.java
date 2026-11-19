@@ -50,6 +50,7 @@ public enum SettingsScreenType {
 	VEHICLE_METRICS_SETTINGS(OBDDevicesListFragment.class.getName(), false, null, R.xml.antplus_settings, R.layout.global_preference_toolbar),
 	VEHICLE_CONNECTED_METRICS_SETTINGS(OBDMainFragment.class.getName(), false, null, R.xml.antplus_settings, R.layout.global_preference_toolbar),
 	WEATHER_SETTINGS(WeatherSettingsFragment.class.getName(), true, ApplyQueryType.SNACK_BAR, R.xml.weather_settings, R.layout.profile_preference_toolbar),
+	WEAR_OS_SETTINGS("net.osmand.plus.plugins.wear.WearSettingsFragment", true, ApplyQueryType.NONE, R.xml.wear_os_settings, R.layout.profile_preference_toolbar),
 	EXTERNAL_SETTINGS_WRITE_TO_TRACK_SETTINGS(ExternalSettingsWriteToTrackSettingsFragment.class.getName(), true, ApplyQueryType.BOTTOM_SHEET, R.xml.external_sensors_write_to_track_settings, R.layout.profile_preference_toolbar),
 	DANGEROUS_GOODS(DangerousGoodsFragment.class.getName(), true, ApplyQueryType.NONE, R.xml.dangerous_goods_parameters, R.layout.global_preference_toolbar),
 	EXTERNAL_INPUT_DEVICE(MainExternalInputDevicesFragment.class.getName(), true, ApplyQueryType.SNACK_BAR, R.xml.external_input_device_settings, R.layout.profile_preference_toolbar_with_switch),
